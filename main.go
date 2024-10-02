@@ -50,20 +50,28 @@ func (hexManager HexManager) NeedsInit() bool {
 }
 
 func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
-	const n = 2
-	for q := -n; q <= n; q++ {
-		r1 := max(-n, -q-n)
-		r2 := min(n, -q+n)
-		for r := r1; r <= r2; r++ {
+
+	rows := [][]int{
+		{-1, 0, 1},
+		{-2, -1, 1, 2},
+		{-2, -1, 0, 1, 2},
+		{-2, -1, 1, 2},
+		{-1, 0, 1},
+	}
+
+	for y, row := range rows {
+		for _, x := range row {
 			hex := Hex{
 				X:      float64(screenWidth) / 2,
 				Y:      float64(screenHeight) / 2,
 				Radius: (float64(screenHeight) / 10) * 0.8,
 			}
 
-			or := PointyOritation()
-			hex.X += or.f0*float64(q) + or.f1*float64(r)*hex.Radius
-			hex.Y += or.f2*float64(q) + or.f3*float64(r)*hex.Radius
+			hex.X += hex.Radius * math.Sqrt(3) * float64(x)
+			hex.Y += hex.Radius*2*float64(y-2) - (float64(y) * hex.Radius * 0.5)
+			if y%2 == 1 {
+				hex.X -= ((hex.Radius * math.Sqrt(3)) / 2) * (float64(x) / math.Abs(float64(x)))
+			}
 
 			hexManager.Hexes = append(hexManager.Hexes, hex)
 		}
@@ -98,7 +106,7 @@ func (hex Hex) vertices(color Color) []ebiten.Vertex {
 	verts := []ebiten.Vertex{}
 
 	for i := 0; i < points; i++ {
-		rate := (float64(i) + 0.5) / float64(points)
+		rate := (float64(i) + .5) / float64(points)
 		verts = append(verts, ebiten.Vertex{
 			DstX:   float32(hex.Radius*math.Cos(2*math.Pi*rate) + hex.X),
 			DstY:   float32(hex.Radius*math.Sin(2*math.Pi*rate) + hex.Y),
