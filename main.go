@@ -26,25 +26,46 @@ func init() {
 }
 
 type Game struct {
-	// Shinji *ebiten.Image
-	Hex Hex
+	HexManager HexManager
+}
+
+type Color struct {
+	R, G, B, A float32
+}
+
+func Black() Color {
+	return Color{R: 0, G: 0, B: 0, A: 1}
+}
+
+func Red() Color {
+	return Color{R: 1, G: 0, B: 0, A: 1}
+}
+
+type HexManager struct {
+	Hexes []Hex
+}
+
+func (hexManager HexManager) NeedsInit() bool {
+	return len(hexManager.Hexes) == 0
+}
+
+func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
+	hexManager.Hexes = []Hex{{
+		X:      float64(screenWidth) / 2,
+		Y:      float64(screenHeight) / 2,
+		Radius: (float64(screenHeight) / 10) * 0.8,
+	}}
+}
+
+func (hexManger HexManager) Draw(screen *ebiten.Image) {
+	for _, hex := range hexManger.Hexes {
+		hex.Draw(screen)
+	}
 }
 
 type Hex struct {
 	X, Y, Radius      float64
 	Selected, Hovered bool
-}
-
-type Color struct {
-	R, G, B float32
-}
-
-func Black() Color {
-	return Color{0, 0, 0}
-}
-
-func Red() Color {
-	return Color{1, 0, 0}
 }
 
 func (hex Hex) vertices(color Color) []ebiten.Vertex {
@@ -108,15 +129,20 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return errors.New("Escape")
 	}
+
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.Hex.Draw(screen)
+	if g.HexManager.NeedsInit() {
+		g.HexManager.InitHexes(screen.Size())
+	}
+
+	g.HexManager.Draw(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 1000, 800
+	return outsideWidth, outsideHeight
 }
 
 func main() {
@@ -132,9 +158,7 @@ func main() {
 
 	ebiten.SetWindowTitle("Eva CAPTCHA")
 	ebiten.SetFullscreen(true)
-	if err := ebiten.RunGame(&Game{Hex: Hex{
-		X: 640, Y: 480, Radius: 50,
-	}}); err != nil {
+	if err := ebiten.RunGame(&Game{HexManager: HexManager{}}); err != nil {
 		log.Fatal(err)
 	}
 }
