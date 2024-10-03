@@ -287,7 +287,7 @@ func (g *Game) passed() bool {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.HexManager.NeedsInit() {
-		g.HexManager.InitHexes(800, 700, 1000)
+		g.HexManager.InitHexes(850, 700, 1100)
 		g.KeyManager.InitHexes(250, 250, 500)
 	}
 
