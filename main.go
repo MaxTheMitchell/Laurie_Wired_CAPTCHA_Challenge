@@ -6,12 +6,14 @@ import (
 	"image"
 	"log"
 	"math"
+	"time"
 
 	"image/color"
 	_ "image/png"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"golang.org/x/exp/rand"
 )
 
 //go:embed assets/imgs/*
@@ -23,10 +25,12 @@ var (
 
 func init() {
 	whiteImage.Fill(color.White)
+	rand.Seed(uint64(time.Now().UnixNano()))
 }
 
 type Game struct {
 	HexManager HexManager
+	KeyManager HexManager
 }
 
 type Color struct {
@@ -45,11 +49,16 @@ func Red() Color {
 	return Color{R: 1, G: 0, B: 0, A: 1}
 }
 
+func Green() Color {
+	return Color{R: 0.78, G: .98, B: 0.647, A: 1}
+}
+
 func Orange() Color {
 	return Color{R: 0.93, G: 0.5, B: 0.06, A: 1}
 }
 
 type HexManager struct {
+	IsKey bool
 	Hexes []Hex
 }
 
@@ -57,8 +66,7 @@ func (hexManager HexManager) NeedsInit() bool {
 	return len(hexManager.Hexes) == 0
 }
 
-func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
-
+func (hexManager *HexManager) InitHexes(centerX, centerY, height int) {
 	rows := [][]int{
 		{-1, 0, 1},
 		{-2, -1, 1, 2},
@@ -70,9 +78,10 @@ func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
 	for y, row := range rows {
 		for _, x := range row {
 			hex := Hex{
-				X:      float64(screenWidth) / 2,
-				Y:      float64(screenHeight) / 2,
-				Radius: (float64(screenHeight) / 10) * 0.8,
+				X:      float64(centerX),
+				Y:      float64(centerY),
+				Radius: (float64(height) / 10) * 0.8,
+				IsKey:  hexManager.IsKey,
 			}
 
 			hex.X += hex.Radius * math.Sqrt(3) * float64(x)
@@ -83,6 +92,18 @@ func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
 
 			hexManager.Hexes = append(hexManager.Hexes, hex)
 		}
+	}
+
+	if hexManager.IsKey {
+		hexManager.selectRandom()
+	}
+}
+
+func (hexManager HexManager) selectRandom() {
+	const randomMax = 6
+
+	for i := 0; i < randomMax; i++ {
+		hexManager.Hexes[rand.Intn(len(hexManager.Hexes))].Selected = true
 	}
 }
 
@@ -107,8 +128,8 @@ func (hexManger HexManager) Draw(screen *ebiten.Image) {
 }
 
 type Hex struct {
-	X, Y, Radius      float64
-	Selected, Hovered bool
+	X, Y, Radius             float64
+	Selected, Hovered, IsKey bool
 }
 
 func (hex Hex) IsInside(x, y float64) bool {
@@ -167,8 +188,12 @@ func (hex Hex) overlayHex() Hex {
 }
 
 func (hex Hex) Draw(screen *ebiten.Image) {
-	hex.draw(screen, Red())
-	hex.overlayHex().draw(screen, hex.fillColor())
+	if hex.IsKey {
+		hex.draw(screen, hex.fillColor())
+	} else {
+		hex.draw(screen, Red())
+		hex.overlayHex().draw(screen, hex.fillColor())
+	}
 }
 
 func (hex Hex) fillColor() Color {
@@ -181,6 +206,9 @@ func (hex Hex) fillColor() Color {
 	if hex.Selected {
 		return Red()
 	}
+	if hex.IsKey {
+		return Green()
+	}
 	return Black()
 }
 
@@ -192,7 +220,11 @@ func (hex Hex) draw(screen *ebiten.Image, color Color) {
 
 func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-		return errors.New("Escape")
+		return errors.New("YOU RAN AWAY, IDOIT SHINJI!")
+	}
+
+	if !g.HexManager.NeedsInit() && g.passed() {
+		return errors.New("You passed the captcha! Congratulations!")
 	}
 
 	g.HexManager.Update()
@@ -200,12 +232,24 @@ func (g *Game) Update() error {
 	return nil
 }
 
+func (g *Game) passed() bool {
+	for i, key := range g.KeyManager.Hexes {
+		if key.Selected != g.HexManager.Hexes[i].Selected {
+			return false
+		}
+	}
+	return true
+}
+
 func (g *Game) Draw(screen *ebiten.Image) {
 	if g.HexManager.NeedsInit() {
-		g.HexManager.InitHexes(screen.Size())
+		screenWidth, screenHeight := screen.Size()
+		g.HexManager.InitHexes(screenWidth/2, screenHeight/2, screenHeight)
+		g.KeyManager.InitHexes(screenWidth/4, screenHeight/4, screenHeight/4)
 	}
 
 	g.HexManager.Draw(screen)
+	g.KeyManager.Draw(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -225,7 +269,7 @@ func main() {
 
 	ebiten.SetWindowTitle("Eva CAPTCHA")
 	ebiten.SetFullscreen(true)
-	if err := ebiten.RunGame(&Game{HexManager: HexManager{}}); err != nil {
+	if err := ebiten.RunGame(&Game{HexManager: HexManager{}, KeyManager: HexManager{IsKey: true}}); err != nil {
 		log.Fatal(err)
 	}
 }
