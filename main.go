@@ -37,8 +37,16 @@ func Black() Color {
 	return Color{R: 0, G: 0, B: 0, A: 1}
 }
 
+func OffRed() Color {
+	return Color{R: 1, G: .2, B: 0, A: 1}
+}
+
 func Red() Color {
 	return Color{R: 1, G: 0, B: 0, A: 1}
+}
+
+func Orange() Color {
+	return Color{R: 0.93, G: 0.5, B: 0.06, A: 1}
 }
 
 type HexManager struct {
@@ -81,7 +89,14 @@ func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
 func (hexManager HexManager) Update() {
 	x, y := ebiten.CursorPosition()
 	for i, hex := range hexManager.Hexes {
-		hexManager.Hexes[i].Hovered = hex.IsInside(float64(x), float64(y))
+		hex.Hovered = false
+		if hex.IsInside(float64(x), float64(y)) {
+			hex.Hovered = true
+			if inpututil.IsMouseButtonJustPressed(ebiten.MouseButton0) {
+				hex.Selected = !hex.Selected
+			}
+		}
+		hexManager.Hexes[i] = hex
 	}
 }
 
@@ -153,13 +168,20 @@ func (hex Hex) overlayHex() Hex {
 
 func (hex Hex) Draw(screen *ebiten.Image) {
 	hex.draw(screen, Red())
-	if !hex.Selected {
-		fillColor := Black()
-		if hex.Hovered {
-			fillColor = Red()
-		}
-		hex.overlayHex().draw(screen, fillColor)
+	hex.overlayHex().draw(screen, hex.fillColor())
+}
+
+func (hex Hex) fillColor() Color {
+	if hex.Selected && hex.Hovered {
+		return OffRed()
 	}
+	if hex.Hovered {
+		return Orange()
+	}
+	if hex.Selected {
+		return Red()
+	}
+	return Black()
 }
 
 func (hex Hex) draw(screen *ebiten.Image, color Color) {
