@@ -78,16 +78,11 @@ func (hexManager *HexManager) InitHexes(screenWidth, screenHeight int) {
 	}
 }
 
-type Oritation struct {
-	f0, f1, f2, f3 float64
-}
-
-func FlatOritation() Oritation {
-	return Oritation{3.0 / 2.0, 0.0, math.Sqrt(3.0) / 2.0, math.Sqrt(3.0)}
-}
-
-func PointyOritation() Oritation {
-	return Oritation{math.Sqrt(3.0), math.Sqrt(3.0) / 2.0, 0.0, 3.0 / 2.0}
+func (hexManager HexManager) Update() {
+	x, y := ebiten.CursorPosition()
+	for i, hex := range hexManager.Hexes {
+		hexManager.Hexes[i].Hovered = hex.IsInside(float64(x), float64(y))
+	}
 }
 
 func (hexManger HexManager) Draw(screen *ebiten.Image) {
@@ -99,6 +94,17 @@ func (hexManger HexManager) Draw(screen *ebiten.Image) {
 type Hex struct {
 	X, Y, Radius      float64
 	Selected, Hovered bool
+}
+
+func (hex Hex) IsInside(x, y float64) bool {
+	q2x := math.Abs(x - hex.X)
+	q2y := math.Abs(y - hex.Y)
+	vert := (hex.Radius * math.Sqrt(3)) / 4
+	hori := hex.Radius
+	if q2x > hori || q2y > vert*2 {
+		return false
+	}
+	return 2*vert*hori-vert*q2x-hori*q2y >= 0
 }
 
 func (hex Hex) vertices(color Color) []ebiten.Vertex {
@@ -148,7 +154,11 @@ func (hex Hex) overlayHex() Hex {
 func (hex Hex) Draw(screen *ebiten.Image) {
 	hex.draw(screen, Red())
 	if !hex.Selected {
-		hex.overlayHex().draw(screen, Black())
+		fillColor := Black()
+		if hex.Hovered {
+			fillColor = Red()
+		}
+		hex.overlayHex().draw(screen, fillColor)
 	}
 }
 
@@ -162,6 +172,8 @@ func (g *Game) Update() error {
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		return errors.New("Escape")
 	}
+
+	g.HexManager.Update()
 
 	return nil
 }
