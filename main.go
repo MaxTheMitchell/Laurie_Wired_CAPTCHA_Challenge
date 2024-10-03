@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"errors"
 	"image"
@@ -9,9 +10,10 @@ import (
 	"time"
 
 	"image/color"
-	_ "image/png"
+	_ "image/gif"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"golang.org/x/exp/rand"
 )
@@ -31,6 +33,7 @@ func init() {
 type Game struct {
 	HexManager HexManager
 	KeyManager HexManager
+	Alerts     Alerts
 }
 
 type Color struct {
@@ -50,11 +53,35 @@ func Red() Color {
 }
 
 func Green() Color {
-	return Color{R: 0.78, G: .98, B: 0.647, A: 1}
+	return Color{R: 0.208, G: 1, B: 0.694, A: 1}
 }
 
 func Orange() Color {
 	return Color{R: 0.93, G: 0.5, B: 0.06, A: 1}
+}
+
+type Alerts struct {
+	Frame int
+	Img   *ebiten.Image
+}
+
+func (alerts *Alerts) Update() {
+	alerts.Frame++
+	if alerts.Frame > 40 {
+		alerts.Frame = 0
+	}
+}
+
+func (alerts Alerts) Draw(screen *ebiten.Image) {
+	screenWidth, screenHeight := screen.Size()
+	if alerts.Frame > 20 {
+		for y := 0; y < screenHeight; y += alerts.Img.Bounds().Dy() {
+			ops := &ebiten.DrawImageOptions{}
+			ops.GeoM.Translate(float64(screenWidth)-float64(alerts.Img.Bounds().Dx()), float64(y))
+			screen.DrawImage(alerts.Img, ops)
+		}
+
+	}
 }
 
 type HexManager struct {
@@ -224,10 +251,11 @@ func (g *Game) Update() error {
 	}
 
 	if !g.HexManager.NeedsInit() && g.passed() {
-		return errors.New("You passed the captcha! Congratulations!")
+		return errors.New("You passed the captcha! Congratulations! Congratulations! Congratulations! Congratulations! Congratulations! Congratulations! Congratulations! Congratulations! Congratulations! Congratulations! \n Thank you all :)")
 	}
 
 	g.HexManager.Update()
+	g.Alerts.Update()
 
 	return nil
 }
@@ -242,14 +270,17 @@ func (g *Game) passed() bool {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	screenWidth, screenHeight := screen.Size()
+
 	if g.HexManager.NeedsInit() {
-		screenWidth, screenHeight := screen.Size()
-		g.HexManager.InitHexes(screenWidth/2, screenHeight/2, screenHeight)
-		g.KeyManager.InitHexes(screenWidth/4, screenHeight/4, screenHeight/4)
+		g.HexManager.InitHexes(screenWidth/2, screenHeight/2+100, screenHeight)
+		g.KeyManager.InitHexes(screenWidth/5, screenHeight/4, screenHeight/2)
 	}
 
 	g.HexManager.Draw(screen)
 	g.KeyManager.Draw(screen)
+	g.Alerts.Draw(screen)
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -257,19 +288,24 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeigh
 }
 
 func main() {
-	// shinjiBytes, err := assets.ReadFile("assets/imgs/shinji.png")
-	// if err != nil {
-	// 	panic(err)
-	// }
+	alertBytes, err := assets.ReadFile("assets/imgs/alert.gif")
+	if err != nil {
+		panic(err)
+	}
 
-	// shinji, _, err := ebitenutil.NewImageFromReader(bytes.NewReader(shinjiBytes))
-	// if err != nil {
-	// 	panic(err)
-	// }
+	alertImg, _, err := ebitenutil.NewImageFromReader(bytes.NewReader(alertBytes))
+	if err != nil {
+		panic(err)
+	}
+
+	ebiten.SetCursorShape(ebiten.CursorShapeCrosshair)
 
 	ebiten.SetWindowTitle("Eva CAPTCHA")
 	ebiten.SetFullscreen(true)
-	if err := ebiten.RunGame(&Game{HexManager: HexManager{}, KeyManager: HexManager{IsKey: true}}); err != nil {
+	if err := ebiten.RunGame(&Game{
+		HexManager: HexManager{},
+		KeyManager: HexManager{IsKey: true},
+		Alerts:     Alerts{Img: alertImg}}); err != nil {
 		log.Fatal(err)
 	}
 }
