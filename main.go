@@ -286,11 +286,9 @@ func (g *Game) passed() bool {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	screenWidth, screenHeight := screen.Size()
-
 	if g.HexManager.NeedsInit() {
-		g.HexManager.InitHexes(screenWidth/2, screenHeight/2+100, screenHeight)
-		g.KeyManager.InitHexes(screenWidth/5, screenHeight/4, screenHeight/2)
+		g.HexManager.InitHexes(800, 700, 1000)
+		g.KeyManager.InitHexes(250, 250, 500)
 	}
 
 	g.HexManager.Draw(screen)
