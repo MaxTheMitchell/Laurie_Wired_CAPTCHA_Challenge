@@ -23,7 +23,7 @@ import (
 
  The goal is to click on the hexes on the big hex grid such that the red hexes match the ones in the tiny hex grid
 
- compile by running go build main.go
+ compile by running `go build main.go``
  (you may need to install the dependencies listed here https://ebitengine.org/en/documents/install.html)
  (also to cross compile to windows run `GOOS=windows GOARCH=amd64 ^C build main.go`)
 
